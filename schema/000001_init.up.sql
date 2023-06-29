@@ -15,6 +15,6 @@ CREATE TABLE sessions
 CREATE TABLE audit
 (
     user_id    int references users (id) on delete cascade not null,
-    event_date date,
+    event_date timestamp,
     event      int
 )

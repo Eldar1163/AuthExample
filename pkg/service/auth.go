@@ -2,6 +2,7 @@ package service
 
 import (
 	"TestTask/model"
+	"TestTask/pkg/common"
 	"TestTask/pkg/repository"
 	"crypto/sha1"
 	"encoding/binary"
@@ -28,18 +29,30 @@ func (s *AuthService) CreateUser(user model.User) (int, error) {
 	return s.repo.CreateUser(user)
 }
 
-func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repo.GetUser(username, generatePasswordHash(password))
-	if err != nil {
-		return "", err
-	}
-
+func (s *AuthService) GenerateToken(userId int) (string, error) {
 	token := generateTokenByTime(time.Now().Unix())
-	err = s.repo.WriteUserToken(user.Id, token, time.Now().Add(EXPIRETIME))
+	err := s.repo.WriteUserToken(userId, token, time.Now().Add(EXPIRETIME))
 	if err != nil {
 		return "", err
 	}
 	return token, nil
+}
+
+func (s *AuthService) CheckUserCredentials(username, password string) (model.User, error) {
+	user, err := s.repo.GetUser(username, generatePasswordHash(password))
+	if err != nil {
+		_ = s.repo.WriteEvent(username, common.WRONGPASSWORDEVENT)
+		return user, err
+	}
+	return user, nil
+}
+
+func (s *AuthService) GetBadAuthAttemptsCnt(userId int) (int, error) {
+	return s.repo.WrongPasswordEnterCnt(userId)
+}
+
+func (s *AuthService) BlockUser(username string) error {
+	return s.repo.WriteEvent(username, common.BLOCKEVENT)
 }
 
 func generatePasswordHash(password string) string {
